@@ -1,25 +1,40 @@
+from abc import abstractmethod
 import random
 
-class state:
+class State:
     def __init__():
         pass
 
+    @abstractmethod
     def is_terminal(self):
         """
-         return true if current state is the terminal
+        return true if current state is the terminal.
         """
-        return 
+        pass 
 
+    @abstractmethod
     def possible_moves(self):
-        return
-
-    def update(self, move):
-        return
-
-    def get_score(self):
+        """
+        Return all possible moves from the current state.
+        """
         pass
 
-    def _update_score(self):
+    @abstractmethod
+    def update(self, move):
+        """
+        Return the new state after a move from the current state.
+        """
+        pass
+
+    @abstractmethod
+    def get_score(self):
+        """
+        Calculate the score of a terminal node.
+        """
+        pass
+
+    @abstractmethod
+    def update_score(self):
         pass
 
 class Node:
@@ -43,7 +58,8 @@ class Node:
         return max(self.children, key= lambda n: n.score)
 
     def update_score(self, result):
-        self.score = self.state._update_score(result)
+        # self.score = self.state.update_score(result)
+        pass
 
 class MCTS:
     """ Monte Carlo Tree Search
@@ -62,15 +78,20 @@ class MCTS:
                 # get the best node from the current node's children 
                 node = self.get_best_move(node)
             else:
-                # no action has been taken from this node
+                # if no action has been taken from this node
                 # EXPAND
                 node = self.expand(node)
                 # SIMULATE
                 result = self.simulate(node)
                 break
-
         # BACKPROPAGATE
         self.backpropagate(node, result)
+
+    def train(self, epoch):
+        count = 0
+        while count<=epoch:
+            self.search(self.root)
+            count = count + 1
 
     def rollout(self, node):
         state = node.state
