@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from math import log, sqrt
 import random
 
 class State:
@@ -29,76 +30,77 @@ class State:
     @abstractmethod
     def get_score(self):
         """
-        Calculate the score of a terminal node.
+        Calculate the score of a terminal state.
         """
         pass
 
-    @abstractmethod
-    def update_score(self):
-        pass
+    # @abstractmethod
+    # def update_score(self):
+    #     pass
 
 class Node:
     def __init__(self, state, parent):
         self.state = state
         self.parent = parent
-        self.children = None
-        self.score = None
+        self.move = None
+        self.children = []
         self.count = 0
+        self.win = 0
+        self.score = 0
 
     def has_children(self):
-        return False if self.children is None else True
+        return bool(self.children)
 
     def is_fully_expanded(self):
-        if len(self.children) == len(self.state.possible_moves()):
-            return True
-        else:
-            return False
+        return bool(len(self.state.possible_moves()))
 
-    def get_best_move(self):
+    def get_best_child(self):
         return max(self.children, key= lambda n: n.score)
 
+    def get_new_child(self):
+        move = random.choice(self.state.possible_moves())
+        state = self.state.update(move)
+        child = Node(state, self)
+
     def update_score(self, result):
-        # self.score = self.state.update_score(result)
-        pass
+        self.count = self.count + 1
+        self.win = self.count + result
+        self.score = self.win/self.count \
+                     + sqrt(2)*sqrt(log(self.parent.count)/self.count)
+
+    def is_terminal(self):
+        return self.state.is_terminal()
 
 class MCTS:
     """ Monte Carlo Tree Search
     """
-    def __init__(self, state, spirit):
+    def __init__(self, state):
         self.root = Node(state, None)
-        self.SPIRIT = spirit # float, from 0 to 1
 
     def search(self, node):
         """
+        Update Monte Carlo Tree
         """
-        while node.state.is_terminal():
-            is_explore = random.uniform(0, 1) if node.has_children() else 1
-            # SELECT
-            if node.is_fully_expanded() or is_explore<self.SPIRIT:
-                # get the best node from the current node's children 
-                node = self.get_best_move(node)
-            else:
-                # if no action has been taken from this node
-                # EXPAND
-                node = self.expand(node)
-                # SIMULATE
-                result = self.simulate(node)
-                break
-        # BACKPROPAGATE
+        while (not node.is_terminal()) and (node.is_fully_expanded()):
+            node = node.get_best_child()
+        
+        if not node.is_fully_expanded():
+            node.get_new_child()
+
+        result = self.rollout(node)
         self.backpropagate(node, result)
 
+
     def train(self, epoch):
-        count = 0
-        while count<=epoch:
+        for _ in range(epoch):
             self.search(self.root)
-            count = count + 1
 
     def rollout(self, node):
         state = node.state
         while not state.is_terminal():
             move = random.choice(state.possible_moves())
             state = state.update(move)
-        return state
+        return state.result
 
     def expand(self, node):
         move = random.choice(node.state.possible_moves())
