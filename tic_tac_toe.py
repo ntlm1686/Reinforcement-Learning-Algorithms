@@ -12,21 +12,29 @@ class Board(State):
         self.stone is the player's identity
         """
         self.board = np.zeros([3,3])
-        self.stone = stone              # The next stone which is going to be put on the board
-        self.result = None
+        self.id = stone              # The next stone which is going to be put on the board
+        self.result = {NOUGHT: 0, CROSS: 0}
 
     def is_terminal(self):
         for i in range(3):
             if self.board[i, :].sum() == 3 \
                 or self.board[:, i].sum() == 3 \
+                or self.board[0, 0] + self.board[1, 1] + self.board[2, 2] == 3 \
                 or self.board[0, 2] + self.board[1, 1] + self.board[2, 0] == 3:
-                self.result = float(self.stone == NOUGHT)
+
+                self.result[CROSS] = float(self.id == NOUGHT)
+                self.result[NOUGHT] = float(self.id == CROSS)
                 return True
             if self.board[:, i].sum() == 12 \
                 or self.board[i, :].sum() == 12 \
+                or self.board[0, 0] + self.board[1, 1] + self.board[2, 2] == 12 \
                 or self.board[0, 2] + self.board[1, 1] + self.board[2, 0] == 12:
-                self.result = float(self.stone == CROSS)
+
+                self.result[CROSS] = float(self.id == NOUGHT)
+                self.result[NOUGHT] = float(self.id == CROSS)
                 return True
+        if 0 not in self.board:
+            return True
         return False
 
     def possible_moves(self):
@@ -40,13 +48,15 @@ class Board(State):
         """
         move = (x, y)
         """
-        new_board = Board(NOUGHT if self.stone==CROSS else CROSS)
+        new_board = Board(NOUGHT if self.id==CROSS else CROSS)
         new_board.board = self.board.copy()
-        new_board.board[move[0], move[1]] = self.stone
+        new_board.board[move[0], move[1]] = self.id
         return new_board
 
     def get_score(self):
-        assert(self.is_terminal())
+        if not self.is_terminal:
+            # draw
+            pass
         return self.result
 
 

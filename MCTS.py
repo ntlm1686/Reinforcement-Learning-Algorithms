@@ -1,3 +1,5 @@
+from UCT import UCT
+
 from abc import abstractmethod
 from math import log, sqrt
 import random
@@ -42,31 +44,27 @@ class Node:
     def __init__(self, state, parent):
         self.state = state
         self.parent = parent
-        self.move = None
         self.children = []
-        self.count = 0
+        self.count = 1
         self.win = 0
-        self.score = 0
-
-    def has_children(self):
-        return bool(self.children)
+        self.untaken_moves = set(state.possible_moves())
 
     def is_fully_expanded(self):
-        return bool(len(self.state.possible_moves()))
+        return not self.untaken_moves
 
-    def get_best_child(self):
-        return max(self.children, key= lambda n: n.score)
+    def get_best_child(self, c=sqrt(2)):
+        return max(self.children,
+                key= lambda n: UCT(n.win, n.count, n.parent.count, c))
 
     def get_new_child(self):
-        move = random.choice(self.state.possible_moves())
+        move = self.untaken_moves.pop()
         state = self.state.update(move)
         child = Node(state, self)
+        self.children.append(child)
 
     def update_score(self, result):
-        self.count = self.count + 1
-        self.win = self.count + result
-        self.score = self.win/self.count \
-                     + sqrt(2)*sqrt(log(self.parent.count)/self.count)
+        self.count += 1
+        self.win += result[self.state.id]
 
     def is_terminal(self):
         return self.state.is_terminal()
@@ -74,22 +72,30 @@ class Node:
 class MCTS:
     """ Monte Carlo Tree Search
     """
-    def __init__(self, state):
+    def __init__(self, state, c=sqrt(2)):
         self.root = Node(state, None)
+        self.c = c
 
     def search(self, node):
         """
         Update Monte Carlo Tree
         """
-        while (not node.is_terminal()) and (node.is_fully_expanded()):
-            node = node.get_best_child()
+        # Selction
+        while not node.is_terminal():
+            if node.is_fully_expanded():
+                node = node.get_best_child(self.c)
+            else:
+                break
         
+        # Expansion
         if not node.is_fully_expanded():
             node.get_new_child()
 
+        # Simulation
         result = self.rollout(node)
-        self.backpropagate(node, result)
 
+        # Backpropagation
+        self.backpropagate(node, result)
 
     def train(self, epoch):
         for _ in range(epoch):
@@ -97,20 +103,10 @@ class MCTS:
 
     def rollout(self, node):
         state = node.state
-        while not state.is_terminal():
+        while not state.is_terminal(): # and state.possible_moves():
             move = random.choice(state.possible_moves())
             state = state.update(move)
-        return state.result
-
-    def expand(self, node):
-        move = random.choice(node.state.possible_moves())
-        state = node.state.update(move)
-        new_node = Node(state, node)
-        node.children.append(new_node)
-        return new_node
-
-    def simulate(self, node):
-        return self.rollout(node).get_score()
+        return state.get_score()
 
     def backpropagate(self, node, result):
         while node:
